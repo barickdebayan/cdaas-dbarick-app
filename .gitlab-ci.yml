@@ -16,6 +16,7 @@ Build-Dev:
         - echo "$MY_CI_REGISTRY_USER"
         - echo "$MY_CI_REGISTRY_PASSWORD"
         - echo "$MY_CI_REGISTRY_IMAGE"
+        - echo "hi"
 
 Build-Prd:
     stage: build

@@ -12,11 +12,10 @@ Build-Dev:
     only:
         - develop
     script: 
-        - echo "$MY_CI_REGISTRY"
-        - echo "$MY_CI_REGISTRY_USER"
-        - echo "$MY_CI_REGISTRY_PASSWORD"
-        - echo "$MY_CI_REGISTRY_IMAGE"
-        - echo "hi"
+        - echo $MY_CI_REGISTRY_PASSWORD | docker login $MY_CI_REGISTRY --username $MY_CI_REGISTRY_USER --password-stdin
+        - docker build --pull --network=host --tag=$MY_CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME .
+        - docker push $MY_CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+        - docker logout
 
 Build-Prd:
     stage: build

@@ -1,0 +1,59 @@
+---
+- name: Deploy docker image on dev & prod servers
+  hosts: all
+  vars: 
+     cont_name: "myapp-{{ tag }}"
+     cont_network: "br1"
+     cont_eport_1: "80"
+     host_eport_1: "8086"
+
+  tasks:
+      - block:
+
+# echo <cont_user_pass> | docker login <cont_registry> -u <cont_user> --password-stdin 
+        - name: Log into private registry 
+          docker_login:
+            registry: "{{ cont_registry }}"
+            username: "{{ registry_user }}"
+            password: "{{ registry_pass }}"
+            reauthorize: yes
+
+# docker stop <cont_id>           
+        - name: stop the container 
+          docker_container:
+            name: "{{ cont_name }}"
+            image: "{{ image_name }}:{{ tag }}"
+            state: stopped
+            
+# docker rm <cont_id>   
+        - name: remove the container 
+          docker_container:
+            name: "{{ cont_name }}"
+            state: absent
+
+# docker run --name <cont_name> --restart always --publish <host_port_1:cont_eport1>  <image_name:tag>
+        - name: Start the container with new pulled image
+          docker_container:
+            name: "{{ cont_name }}"
+            image: "{{ image_name }}:{{ tag }}"
+            state: started
+            pull: yes
+            restart_policy: always
+            detach: yes
+            published_ports:
+             - "{{ host_eport_1 }}:{{ cont_eport_1 }}"   
+
+# docker logout        
+        - name: Log out of DockerHub
+          docker_login:
+            state: absent
+
+        - name: Deployment Successful
+          ansible.builtin.debug:
+             msg: 'Deployment Successful.'
+
+        rescue:
+
+        - name: Deployment Failed
+          ansible.builtin.debug:
+             msg: 'Deployment Failed!'

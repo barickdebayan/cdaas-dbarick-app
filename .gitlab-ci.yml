@@ -11,6 +11,9 @@ Build-Dev:
     stage: build
     only:
         - develop
+    before_script: 
+        - export http_proxy=http://172.30.180.23:8080
+        - export https_proxy=http://172.30.180.23:8080
     script: 
         - echo $MY_CI_REGISTRY_PASSWORD | docker login $MY_CI_REGISTRY --username $MY_CI_REGISTRY_USER --password-stdin
         - docker build --pull --network=host --tag=$MY_CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME .

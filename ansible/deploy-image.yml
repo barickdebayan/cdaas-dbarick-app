@@ -3,7 +3,6 @@
   hosts: all
   vars: 
      cont_name: "myapp-{{ tag }}"
-     cont_network: "br1"
      cont_eport_1: "8080"
      host_eport_1: "8080"
 

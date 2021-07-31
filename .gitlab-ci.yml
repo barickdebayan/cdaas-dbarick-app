@@ -27,3 +27,20 @@ Build-Prd:
         - main
     script: 
         - echo "hi"
+
+Deploy-Dev:
+    stage: deploy
+    only:
+        - develop
+    before_script:
+      - export ANSIBLE_CONFIG=ansible/ansible.cfg
+      - echo "{" > ansible_vars.json
+      - echo "\"cont_registry\":\"$MY_CI_REGISTRY\"," >> ansible_vars.json
+      - echo "\"registry_user\":\"$MY_CI_REGISTRY_USER\"," >> ansible_vars.json
+      - echo "\"registry_pass\":\"$MY_CI_REGISTRY_PASSWORD\"," >> ansible_vars.json
+      - echo "\"image_name\":\"$MY_CI_REGISTRY_IMAGE\"," >> ansible_vars.json
+      - echo "\"tag\":\"$CI_COMMIT_REF_NAME\"," >> ansible_vars.json
+      - echo "}" >> ansible_vars.json
+    script: 
+      - cat ansible_vars.json
+      - ansible-playbook  ansible/deploy-image.yml --limit "$CI_COMMIT_REF_NAME" --extra-vars "@ansible_vars.json" -v 

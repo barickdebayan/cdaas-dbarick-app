@@ -3,7 +3,7 @@ LABEL stage=builder
 WORKDIR /app
 ADD ./ /app/
 RUN cd /app
-RUN ./mvnw clean install spring-boot:repackage
+RUN export http_proxy=http://172.30.180.23:8080 && ./mvnw clean install spring-boot:repackage
 
 FROM openjdk:8-jdk-alpine
 WORKDIR /app

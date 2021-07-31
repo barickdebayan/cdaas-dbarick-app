@@ -13,3 +13,10 @@ Build-Dev:
         - develop
     script: 
         - echo "hi"
+
+Build-Prd:
+    stage: build
+    only:
+        - main
+    script: 
+        - echo "hi"

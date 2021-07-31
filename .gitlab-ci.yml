@@ -14,6 +14,7 @@ Build-Dev:
     before_script: 
         - export http_proxy=http://172.30.180.23:8080
         - export https_proxy=http://172.30.180.23:8080
+        - export MAVEN_OPTS="-Dmaven.test.skip=true  -Dhttp.proxyHost=172.30.180.23 -Dhttp.proxyPort=8080 -Dhttps.proxyHost=172.30.180.23 -Dhttps.proxyPort=8080"
     script: 
         - echo $MY_CI_REGISTRY_PASSWORD | docker login $MY_CI_REGISTRY --username $MY_CI_REGISTRY_USER --password-stdin
         - docker build --pull --network=host --tag=$MY_CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME .

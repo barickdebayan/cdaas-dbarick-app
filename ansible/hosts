@@ -1,6 +1,6 @@
 [servers]
 develop ansible_host=10.63.69.176
-master ansible_host=10.63.91.6
+main ansible_host=10.63.91.6
 
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3

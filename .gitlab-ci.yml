@@ -7,6 +7,7 @@ stages:
 services:
   - docker:dind
 
+# when tag=develop 
 Build-Dev:
     stage: build
     only:
@@ -21,12 +22,20 @@ Build-Dev:
         - docker push $MY_CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
         - docker logout
 
+# when tag=latest
 Build-Prd:
     stage: build
     only:
         - main
+    before_script: 
+        - export http_proxy=http://172.30.180.23:8080
+        - export https_proxy=http://172.30.180.23:8080
+        - export MAVEN_OPTS="-Dmaven.test.skip=true  -Dhttp.proxyHost=172.30.180.23 -Dhttp.proxyPort=8080 -Dhttps.proxyHost=172.30.180.23 -Dhttps.proxyPort=8080"
     script: 
-        - echo "hi"
+        - echo $MY_CI_REGISTRY_PASSWORD | docker login $MY_CI_REGISTRY --username $MY_CI_REGISTRY_USER --password-stdin
+        - docker build --pull --network=host --tag=$MY_CI_REGISTRY_IMAGE:latest .
+        - docker push $MY_CI_REGISTRY_IMAGE:latest
+        - docker logout
 
 Deploy-Dev:
     stage: deploy
@@ -40,6 +49,23 @@ Deploy-Dev:
       - echo "\"registry_pass\":\"$MY_CI_REGISTRY_PASSWORD\"," >> ansible_vars.json
       - echo "\"image_name\":\"$MY_CI_REGISTRY_IMAGE\"," >> ansible_vars.json
       - echo "\"tag\":\"$CI_COMMIT_REF_NAME\"," >> ansible_vars.json
+      - echo "}" >> ansible_vars.json
+    script: 
+      - cat ansible_vars.json
+      - ansible-playbook  ansible/deploy-image.yml --limit "$CI_COMMIT_REF_NAME" --extra-vars "@ansible_vars.json" -v 
+
+Deploy-Prd:
+    stage: deploy
+    only:
+        - main
+    before_script:
+      - export ANSIBLE_CONFIG=ansible/ansible.cfg
+      - echo "{" > ansible_vars.json
+      - echo "\"cont_registry\":\"$MY_CI_REGISTRY\"," >> ansible_vars.json
+      - echo "\"registry_user\":\"$MY_CI_REGISTRY_USER\"," >> ansible_vars.json
+      - echo "\"registry_pass\":\"$MY_CI_REGISTRY_PASSWORD\"," >> ansible_vars.json
+      - echo "\"image_name\":\"$MY_CI_REGISTRY_IMAGE\"," >> ansible_vars.json
+      - echo "\"tag\":\"latest\"," >> ansible_vars.json
       - echo "}" >> ansible_vars.json
     script: 
       - cat ansible_vars.json

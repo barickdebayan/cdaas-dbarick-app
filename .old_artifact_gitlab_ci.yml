@@ -1,0 +1,90 @@
+image: java:8
+
+variables:
+  DOCKER_TLS_CERTDIR: "/certs"
+  DOCKER_IMAGE: "docker:19.03.13"
+  ARTIFACTORY_URL: "https://192.168.130.23/artifactory/cdaas"
+  XLRELEASE_URL: "https://192.168.130.22"
+  ARTIFACT_NAME: "cdaas-demo-app"
+
+default:
+  cache:
+    paths:
+      - $CI_PROJECT_DIR/target/*.jar
+      - $CI_PROJECT_DIR/.mvn/repository
+  before_script:
+    - chmod +x mvnw
+
+stages:
+  - validate
+  - test
+  - build
+  - publish
+  - cleanup
+  - deploy
+
+workflow:
+  rules:
+    - if: '$CI_COMMIT_TAG'
+
+validate:
+  stage: validate
+  script: ./mvnw clean validate
+
+compile:
+  stage: validate
+  script: ./mvnw clean compile
+
+test:unit-test:
+  stage: test
+  script: ./mvnw surefire-report:report
+  artifacts:
+    reports:
+      junit: $CI_PROJECT_DIR/target/surefire-reports/TEST-com.demo.DemoControllerTest.xml
+
+build:jar:
+  before_script:
+    - ./mvnw versions:set -DnewVersion=$CI_COMMIT_REF_NAME
+  stage: build
+  script: ./mvnw clean install spring-boot:repackage
+  dependencies:
+    - test:unit-test
+
+publish:artifact:
+  stage: publish
+  script:
+    - ARTIFACT_MD5_CHECKSUM=$(md5sum $CI_PROJECT_DIR/target/$ARTIFACT_NAME-$CI_COMMIT_REF_NAME.jar | awk '{print $1}')
+    - ARTIFACT_SHA1_CHECKSUM=$(shasum -a 1 $CI_PROJECT_DIR/target/$ARTIFACT_NAME-$CI_COMMIT_REF_NAME.jar | awk '{ print $1 }')
+    - |
+      curl -k --upload-file "$CI_PROJECT_DIR/target/$ARTIFACT_NAME-$CI_COMMIT_REF_NAME.jar" \
+      --header "X-Checksum-MD5:${ARTIFACT_MD5_CHECKSUM}" \
+      --header "X-Checksum-Sha1:${ARTIFACT_SHA1_CHECKSUM}" \
+      -u $ARTIFACTORY_USER:$ARTIFACTORY_PASSWORD \
+      -v "$ARTIFACTORY_URL/$ARTIFACT_NAME-$CI_COMMIT_REF_NAME.jar"
+  dependencies:
+    - build:jar
+
+deploy:TAP:
+  before_script:
+    - >-
+      echo
+      '{
+        "releaseTitle": "CDaaS-Demo-App-'"$CI_COMMIT_TAG"'",
+        "releaseVariables":
+          {
+            "ApplicationVersion": "'"$CI_COMMIT_TAG"'"
+          },
+          "releasePasswordVariables": { },
+          "scheduledStartDate": null,
+          "autoStart": true
+      }'
+      >> $CI_PROJECT_DIR/post_data.json
+  stage: deploy
+  script:
+    - |
+      curl -k -X POST --header "Content-Type:application/json" \
+      -u $XLRELEASE_USER:$XLRELEASE_PASSWORD \
+      -d @$CI_PROJECT_DIR/post_data.json \
+      $XLRELEASE_URL/api/v1/templates/Applications/Folderbc5fd051b0154c3b9f8bfa51c1f7d5b0/Release2b8435e8d90c4e46af2e0ab18aeb7165/create
+  dependencies:
+    - publish:artifact
